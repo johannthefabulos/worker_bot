@@ -6,6 +6,7 @@ import os
 import signal
 import threading
 import time
+import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
 from queue import Queue
@@ -23,7 +24,7 @@ from tests.limit_strats import avg_strat_tiers, generic_limit_strat, test_strat
 from tests.market_strats import market_strat_support, similarity_test
 from tests.Strats import Permutation
 
-task_data = os.getenv('TASK_DATA')
+
 class setup:
     def __init__(self, symbol, myDict, simulating=False, start_time=None, end_time=None, obj_to_use=None, username=None, request=None, trigger_event=None, trigger_queue = None):
         self.SYMBOL = symbol
@@ -366,7 +367,6 @@ pause_event = threading.Event()
 pause_event.set()
 start_time = None
 end_time = None
-passkey = False
 beg_managers = []
 client_tasks = defaultdict()
 # def cpu_bound(runner):
@@ -375,42 +375,69 @@ client_tasks = defaultdict()
 # logging.basicConfig(level=logging.DEBUG)
 
 
+def shutdown(signal, frame):
+    print(f"Received signal {signal}. Shutting down gracefully...")
+    # Perform any cleanup here (e.g., stop background threads)
+    exit(0)
+
+def get_space_backwards(text, start):
+    for i in range(start, -1, -1):
+        if text[i] == " ":
+            return text[i+1:start]
+    return -1
+
+def check_malware(text):
 
 if __name__ == '__main__':
-    print('task_data: ', task_data)
-    # signal.signal(signal.SIGINT, shutdown)  # Handles Ctrl+C
-    # signal.signal(signal.SIGTERM, shutdown)
-    # # for any tasks for all clients
-    # # loop = asyncio.get_event_loop()
-    # # loop.create_task(background_task())
+    # while task_data == None:
+    #     continue
+    # print('task_data: ', task_data)
+    signal.signal(signal.SIGINT, shutdown)  # Handles Ctrl+C
+    signal.signal(signal.SIGTERM, shutdown)
+    simulating = True
+    # for any tasks for all clients
+    # loop = asyncio.get_event_loop()
+    # loop.create_task(background_task())
     
     # user_db = database('user_db')
     # users = user_db.get_collection('users')
     # user_preferences = user_db.get_collection('user_preferences')
-    
-    
-    # date_obj = dates(None, None)
     # passkey = False
-    # myDict = {'BTC': 0, 'USD': 10000}
-    # print('starting')
-    # SYMBOL = 'BTCUSDC'
-    # simulating = False
+    
+    fake_currency = os.getenv('fake_currency')
+    # ex: fake_currency = {'BTC': 0, 'USD': 10000}
+    SYMBOL = os.getenv('fake_symbol')
+    # ex: SYMBOL = 'BTCUSDT'
+    DATES = os.getenv('fake_dates')
+    # ex: DATES = ['2023-11-03T11:00:00.000000+00:00', '2023-12-03T00:00:00.000000+00:00'] 
+    DATE_OBJ = dates(DATES[0], DATES[1])
+    # ex see dates class
+    STRATEGY = os.getenv('strategy')
+    # TODO: put in separate file
+    path = r"worker_bot/tests/web_limit_strats.py"
+    result = setup_file(path=path, raw_code=STRATEGY)
+    # TODO: get name of class
+    strat_name = get_space_backwards(STRATEGY, STRATEGY.find('(generic_limit_strat)'))
+    if start_time == -1:
+        print('error')
+    # TODO: run anti malaware
+    # TODO: get anem of class to where it needs to go(inside setup)
+    web_class = getattr(path, strat_name)
+    # TODO
     # print('last', passkey)
-    # while date_obj.get_end() is None and date_obj.get_start() is None and date_obj.get_sim() is None:    
-    #     time.sleep(5)
+    # date_obj = dates(None, None)
+    
     # print('succeed: ', start_time, end_time)
 
-    # # start_time = '2023-11-03T11:00:00.000000+00:00'
-    # # end_time = '2023-12-03T00:00:00.000000+00:00'
-    # keep_running = True
-    # myobj = define_obj(None, None, None)
-    # if date_obj.get_sim():
-    #     trigger_event_dict = {'period': trigger_period_update, 'trade': trigger_trade}
-    #     trigger_queue_dict = {'period': period_queue, 'trade': trade_queue}
-    # else:
-    #     trigger_event_dict = {'period': trigger_live_period, 'trade': trigger_live_trades, 'pending': trigger_live_pending}
-    #     trigger_queue_dict = {'period': live_period_queue, 'trade': live_trades_queue, 'pending': live_pending_queue}
+    keep_running = True
+    myobj = define_obj(None, None, None)
+    if DATE_OBJ.get_sim():
+        trigger_event_dict = {'period': trigger_period_update, 'trade': trigger_trade}
+        trigger_queue_dict = {'period': period_queue, 'trade': trade_queue}
+    else:
+        trigger_event_dict = {'period': trigger_live_period, 'trade': trigger_live_trades, 'pending': trigger_live_pending}
+        trigger_queue_dict = {'period': live_period_queue, 'trade': live_trades_queue, 'pending': live_pending_queue}
 
-    # setup_exchanges = setup(symbol=SYMBOL, myDict=myDict, simulating=date_obj.get_sim(), start_time=start_time, end_time=end_time, username=myobj.get_username(), request=myobj.get_request(), trigger_event=trigger_event_dict, trigger_queue=trigger_queue_dict)
-    # runner = run(setup_exchanges)
-    # runner.start()
+    setup_exchanges = setup(symbol=SYMBOL, myDict=fake_currency, simulating=True, start_time=DATE_OBJ.get_start(), end_time=DATE_OBJ.get_end(), username=myobj.get_username(), request=myobj.get_request(), trigger_event=trigger_event_dict, trigger_queue=trigger_queue_dict)
+    runner = run(setup_exchanges)
+    runner.start()
