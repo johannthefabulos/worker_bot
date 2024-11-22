@@ -423,7 +423,7 @@ if __name__ == '__main__':
     # TODO: run anti malaware
     # TODO: get anem of class to where it needs to go(inside setup)
     web_class = getattr(path, strat_name)
-    # TODO
+    # TODOsss
     # print('last', passkey)
     # date_obj = dates(None, None)
     
